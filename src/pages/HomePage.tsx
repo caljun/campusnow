@@ -36,19 +36,15 @@ function timeAgo(ms: number): string {
   return `${Math.floor(min / 60)}時間前`;
 }
 
-function MyLocationButton({ onLocate }: { onLocate: (lat: number, lng: number) => void }) {
+function MyLocationButton({ pos }: { pos: { lat: number; lng: number } | null }) {
   const map = useMap();
   const handleClick = () => {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const { latitude: lat, longitude: lng } = pos.coords;
-      map.setView([lat, lng], 17);
-      onLocate(lat, lng);
-    });
+    if (pos) map.setView([pos.lat, pos.lng], 17);
   };
   return (
     <button
       onClick={handleClick}
-      title="現在地を表示"
+      title="現在地に移動"
       className="absolute top-3 right-3 z-[1000] bg-white rounded-xl shadow-md w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition"
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -72,6 +68,15 @@ export default function HomePage() {
   useEffect(() => {
     setCheckedIn(profile?.checkedIn ?? false);
   }, [profile]);
+
+  useEffect(() => {
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => setMyPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -212,7 +217,7 @@ export default function HomePage() {
                 </CircleMarker>
               );
             })}
-            <MyLocationButton onLocate={(lat, lng) => setMyPos({ lat, lng })} />
+            <MyLocationButton pos={myPos} />
           </MapContainer>
 
           {/* Legend */}
