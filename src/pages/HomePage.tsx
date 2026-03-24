@@ -16,7 +16,7 @@ L.Icon.Default.mergeOptions({
 });
 
 const QUINTBRIDGE = { lat: 34.699167, lng: 135.530000 };
-const GEOFENCE_RADIUS_M = 200;
+const GEOFENCE_RADIUS_M = 150;
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
@@ -279,7 +279,7 @@ export default function HomePage() {
                   {loading ? "位置情報取得中..." : "📍 チェックイン"}
                 </button>
                 <p className="text-[11px] text-gray-400 text-center px-2">
-                  QUINTBRIDGE（半径200m）内にいる場合のみチェックインできます
+                  QUINTBRIDGE（半径150m）内にいる場合のみチェックインできます
                 </p>
               </>
             )}

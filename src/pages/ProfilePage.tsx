@@ -78,73 +78,79 @@ export default function ProfilePage() {
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
 
+        {/* Edit modal */}
+        {editing && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setEditing(false)} />
+            <div className="relative bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl px-5 pt-5 pb-8 md:pb-6 space-y-4">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-bold text-gray-900 text-base">プロフィールを編集</h3>
+                <button onClick={() => setEditing(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">名前</label>
+                <input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="名前"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">学部・所属</label>
+                <input
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  placeholder="例: 工学部 3年"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">自己紹介</label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="一言自己紹介..."
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition resize-none"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setEditing(false)} className="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+                  キャンセル
+                </button>
+                <button onClick={handleSave} disabled={saving} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50">
+                  {saving ? "保存中..." : "保存"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Profile card */}
         <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          {/* Header band */}
           <div className="h-20 bg-gradient-to-r from-indigo-500 to-indigo-600" />
           <div className="px-5 pb-5">
             <div className="flex items-end justify-between -mt-8 mb-4">
               <div className="w-16 h-16 rounded-2xl bg-white shadow-sm border-2 border-white flex items-center justify-center text-indigo-600 font-bold text-2xl">
                 {profile?.displayName?.charAt(0) ?? "?"}
               </div>
-              {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-xs text-indigo-600 border border-indigo-200 bg-indigo-50 px-3 py-1.5 rounded-full font-medium hover:bg-indigo-100 transition"
-                >
-                  編集
-                </button>
-              )}
+              <button
+                onClick={() => setEditing(true)}
+                className="text-xs text-indigo-600 border border-indigo-200 bg-indigo-50 px-3 py-1.5 rounded-full font-medium hover:bg-indigo-100 transition"
+              >
+                編集
+              </button>
             </div>
-
-            {editing ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">名前</label>
-                  <input
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="名前"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">学部・所属</label>
-                  <input
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    placeholder="例: 工学部 3年"
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">自己紹介</label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="一言自己紹介..."
-                    rows={3}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition resize-none"
-                  />
-                </div>
-                <div className="flex gap-2 pt-1">
-                  <button onClick={() => setEditing(false)} className="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
-                    キャンセル
-                  </button>
-                  <button onClick={handleSave} disabled={saving} className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-indigo-700 transition disabled:opacity-50">
-                    {saving ? "保存中..." : "保存"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p className="font-bold text-gray-900 text-lg leading-tight">{profile?.displayName}</p>
-                {profile?.department && <p className="text-sm text-gray-400 mt-0.5">{profile.department}</p>}
-                {profile?.bio && <p className="text-sm text-gray-600 mt-3 leading-relaxed">{profile.bio}</p>}
-                {!profile?.bio && !profile?.department && (
-                  <p className="text-sm text-gray-300 mt-1">プロフィールを編集して自己紹介を追加しよう</p>
-                )}
-              </>
+            <p className="font-bold text-gray-900 text-lg leading-tight">{profile?.displayName}</p>
+            {profile?.department && <p className="text-sm text-gray-400 mt-0.5">{profile.department}</p>}
+            {profile?.bio && <p className="text-sm text-gray-600 mt-3 leading-relaxed">{profile.bio}</p>}
+            {!profile?.bio && !profile?.department && (
+              <p className="text-sm text-gray-300 mt-1">プロフィールを編集して自己紹介を追加しよう</p>
             )}
           </div>
         </div>
