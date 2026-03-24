@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [pendingIncoming, setPendingIncoming] = useState<(FriendRequest & { fromProfile?: UserProfile })[]>([]);
   const [friends, setFriends] = useState<UserProfile[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     setDisplayName(profile?.displayName ?? "");
@@ -77,6 +78,43 @@ export default function ProfilePage() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+
+        {/* Friend profile modal */}
+        {selectedFriend && (
+          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedFriend(null)} />
+            <div className="relative bg-white w-full md:max-w-sm md:rounded-2xl rounded-t-2xl overflow-hidden">
+              <div className="h-16 bg-gradient-to-r from-emerald-400 to-emerald-500" />
+              <div className="px-5 pb-8">
+                <div className="flex items-end justify-between -mt-7 mb-4">
+                  <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border-2 border-white flex items-center justify-center text-emerald-600 font-bold text-2xl">
+                    {selectedFriend.displayName.charAt(0)}
+                  </div>
+                  <button
+                    onClick={() => setSelectedFriend(null)}
+                    className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-bold text-gray-900 text-lg leading-tight">{selectedFriend.displayName}</p>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-medium">友達</span>
+                </div>
+                {selectedFriend.department && (
+                  <p className="text-sm text-gray-400">{selectedFriend.department}</p>
+                )}
+                {selectedFriend.bio ? (
+                  <p className="text-sm text-gray-600 mt-3 leading-relaxed">{selectedFriend.bio}</p>
+                ) : (
+                  <p className="text-sm text-gray-300 mt-3">自己紹介はまだありません</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Edit modal */}
         {editing && (
@@ -208,7 +246,11 @@ export default function ProfilePage() {
           ) : (
             <div className="divide-y divide-gray-50">
               {friends.map((f) => (
-                <div key={f.uid} className="px-5 py-3.5 flex items-center gap-3">
+                <button
+                  key={f.uid}
+                  onClick={() => setSelectedFriend(f)}
+                  className="w-full px-5 py-3.5 flex items-center gap-3 hover:bg-gray-50 transition text-left"
+                >
                   <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm flex-shrink-0">
                     {f.displayName.charAt(0)}
                   </div>
@@ -216,12 +258,10 @@ export default function ProfilePage() {
                     <p className="text-sm font-semibold text-gray-800 truncate">{f.displayName}</p>
                     {f.department && <p className="text-xs text-gray-400 truncate">{f.department}</p>}
                   </div>
-                  <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
               ))}
             </div>
           )}
