@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { doc, updateDoc, setDoc, onSnapshot, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, updateDoc, setDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { db, auth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Layout from "../components/Layout";
-import type { FriendRequest, UserProfile } from "../types";
+import type { FriendRequest, UserProfile, MapPost } from "../types";
 
 export default function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -18,6 +18,8 @@ export default function ProfilePage() {
   const [pendingIncoming, setPendingIncoming] = useState<(FriendRequest & { fromProfile?: UserProfile })[]>([]);
   const [friends, setFriends] = useState<UserProfile[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<UserProfile | null>(null);
+  const [activeTab, setActiveTab] = useState<"profile" | "posts">("profile");
+  const [myPosts, setMyPosts] = useState<MapPost[]>([]);
 
   useEffect(() => {
     setDisplayName(profile?.displayName ?? "");
@@ -69,6 +71,34 @@ export default function ProfilePage() {
     await refreshProfile();
     setSaving(false);
     setEditing(false);
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "mapPosts"), where("uid", "==", user.uid));
+    const unsub = onSnapshot(q, (snap) => {
+      const now = Date.now();
+      setMyPosts(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as MapPost))
+          .filter((p) => p.expiresAt > now)
+          .sort((a, b) => b.createdAt - a.createdAt)
+      );
+    });
+    return unsub;
+  }, [user]);
+
+  const handleDeletePost = async (postId: string) => {
+    await deleteDoc(doc(db, "mapPosts", postId));
+  };
+
+  const timeAgo = (ms: number) => {
+    const diff = Date.now() - ms;
+    const min = Math.floor(diff / 60000);
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return `${sec}秒前`;
+    if (min < 60) return `${min}分前`;
+    return `${Math.floor(min / 60)}時間前`;
   };
 
   const handleAccept = (reqId: string) => updateDoc(doc(db, "friendRequests", reqId), { status: "accepted" });
@@ -193,6 +223,60 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
+          {(["profile", "posts"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab ? "bg-white shadow-sm text-indigo-600" : "text-gray-500"
+              }`}
+            >
+              {tab === "profile" ? "プロフィール" : `投稿 ${myPosts.length > 0 ? `(${myPosts.length})` : ""}`}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "posts" ? (
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {myPosts.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-400">現在アクティブな投稿はありません</p>
+                <p className="text-xs text-gray-300 mt-1">投稿は5分で自動削除されます</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {myPosts.map((post) => (
+                  <div key={post.id} className="px-5 py-4 flex gap-3 items-start">
+                    <div className="w-2 h-2 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800">{post.text}</p>
+                      <p className="text-xs text-gray-400 mt-1">{timeAgo(post.createdAt)}</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeletePost(post.id)}
+                      className="flex-shrink-0 w-7 h-7 rounded-full hover:bg-red-50 flex items-center justify-center transition"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M9 6V4h6v2" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
         {/* Pending requests */}
         {pendingIncoming.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -266,6 +350,9 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+          </>
+        )}
 
         {/* Logout */}
         <button
