@@ -94,10 +94,13 @@ export default function HomePage() {
   }, [user]);
 
   useEffect(() => {
-    const now = Date.now();
-    const q = query(collection(db, "mapPosts"), where("expiresAt", ">", now));
-    const unsub = onSnapshot(q, (snap) => {
-      setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as MapPost)));
+    const unsub = onSnapshot(collection(db, "mapPosts"), (snap) => {
+      const now = Date.now();
+      setPosts(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as MapPost))
+          .filter((p) => p.expiresAt > now)
+      );
     });
     return unsub;
   }, []);
@@ -145,7 +148,7 @@ export default function HomePage() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           createdAt: now,
-          expiresAt: now + 24 * 60 * 60 * 1000,
+          expiresAt: now + 5 * 60 * 1000,
         });
         setPostText("");
         setPosting(false);
@@ -265,7 +268,7 @@ export default function HomePage() {
                     投稿
                   </button>
                 </div>
-                <p className="text-[11px] text-gray-400 px-1">投稿は24時間後に自動削除されます</p>
+                <p className="text-[11px] text-gray-400 px-1">投稿は5分後に自動削除されます</p>
                 <button
                   onClick={handleCheckOut}
                   disabled={loading}

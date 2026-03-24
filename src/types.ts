@@ -24,5 +24,5 @@ export interface MapPost {
   lat: number;
   lng: number;
   createdAt: number;
-  expiresAt: number; // createdAt + 24h
+  expiresAt: number; // createdAt + 5min
 }
