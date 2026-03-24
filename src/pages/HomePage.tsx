@@ -64,6 +64,7 @@ export default function HomePage() {
   const [posts, setPosts] = useState<MapPost[]>([]);
   const [friendUids, setFriendUids] = useState<Set<string>>(new Set());
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
 
   useEffect(() => {
     setCheckedIn(profile?.checkedIn ?? false);
@@ -106,25 +107,21 @@ export default function HomePage() {
   }, []);
 
   const handleCheckIn = async () => {
+    setCheckInError(null);
+    if (!myPos) {
+      setCheckInError("位置情報を取得中です。少し待ってから再試行してください。");
+      return;
+    }
+    const dist = haversineDistance(myPos.lat, myPos.lng, QUINTBRIDGE.lat, QUINTBRIDGE.lng);
+    if (dist > GEOFENCE_RADIUS_M) {
+      setCheckInError(`範囲外です — QUINTBRIDGEまで約${Math.round(dist)}m`);
+      return;
+    }
     setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, QUINTBRIDGE.lat, QUINTBRIDGE.lng);
-        if (dist > GEOFENCE_RADIUS_M) {
-          alert(`QUINTBRIDGEの範囲外です（${Math.round(dist)}m離れています）`);
-          setLoading(false);
-          return;
-        }
-        await setDoc(doc(db, "users", user!.uid), { checkedIn: true, checkedInAt: Date.now() }, { merge: true });
-        await refreshProfile();
-        setCheckedIn(true);
-        setLoading(false);
-      },
-      () => {
-        alert("位置情報の取得に失敗しました。ブラウザの設定を確認してください。");
-        setLoading(false);
-      }
-    );
+    await setDoc(doc(db, "users", user!.uid), { checkedIn: true, checkedInAt: Date.now() }, { merge: true });
+    await refreshProfile();
+    setCheckedIn(true);
+    setLoading(false);
   };
 
   const handleCheckOut = async () => {
@@ -284,11 +281,20 @@ export default function HomePage() {
                   disabled={loading}
                   className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold text-sm disabled:opacity-50 hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-sm"
                 >
-                  {loading ? "位置情報取得中..." : "📍 チェックイン"}
+                  {loading ? "チェックイン中..." : "📍 チェックイン"}
                 </button>
-                <p className="text-[11px] text-gray-400 text-center px-2">
-                  QUINTBRIDGE（半径150m）内にいる場合のみチェックインできます
-                </p>
+                {checkInError ? (
+                  <div className="flex items-center gap-2 bg-red-50 text-red-500 text-xs px-3 py-2.5 rounded-xl">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    {checkInError}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-400 text-center px-2">
+                    QUINTBRIDGE（半径150m）内にいる場合のみチェックインできます
+                  </p>
+                )}
               </>
             )}
           </div>
