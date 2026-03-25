@@ -77,7 +77,9 @@ export default function ListPage() {
     setSending(null);
   };
 
+  const me = users.find((u) => u.uid === user?.uid);
   const others = users.filter((u) => u.uid !== user?.uid);
+  const sorted = me ? [me, ...others] : others;
 
   return (
     <Layout>
@@ -90,11 +92,11 @@ export default function ListPage() {
           </div>
           <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-medium">{others.length}人</span>
+            <span className="text-xs font-medium">{sorted.length}人</span>
           </div>
         </div>
 
-        {others.length === 0 ? (
+        {sorted.length === 0 ? (
           <div className="text-center py-24">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -109,7 +111,8 @@ export default function ListPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {others.map((u) => {
+            {sorted.map((u) => {
+              const isMe = u.uid === user?.uid;
               const rel = getRelation(u.uid);
               const isFriend = rel?.status === "accepted";
               const isPending = rel?.status === "pending";
@@ -119,11 +122,15 @@ export default function ListPage() {
                   key={u.uid}
                   className="bg-white rounded-2xl px-4 py-3.5 flex items-center gap-3 border border-gray-100 hover:border-gray-200 transition"
                 >
-                  <Avatar name={u.displayName} color={isFriend ? "emerald" : "indigo"} />
+                  <Avatar name={u.displayName} color={isMe ? "indigo" : isFriend ? "emerald" : "indigo"} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-gray-900 text-sm truncate">{u.displayName}</p>
-                      {isFriend && (
+                      {isMe ? (
+                        <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
+                          自分
+                        </span>
+                      ) : isFriend && (
                         <span className="text-[10px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
                           友達
                         </span>
@@ -137,7 +144,7 @@ export default function ListPage() {
                     )}
                   </div>
                   <div className="flex-shrink-0 ml-2">
-                    {isFriend ? (
+                    {isMe ? null : isFriend ? (
                       <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
