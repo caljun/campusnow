@@ -3,6 +3,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+import { useMapContext } from "../context/MapContext";
 import Layout from "../components/Layout";
 import type { Post, PostType } from "../types";
 
@@ -38,6 +39,7 @@ const TYPE_LABELS: Record<PostType, string> = {
 export default function ListPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { flyTo } = useMapContext();
   const [posts, setPosts] = useState<Post[]>([]);
   const [tab, setTab] = useState<Tab>("all");
 
@@ -128,23 +130,36 @@ export default function ListPage() {
 
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-gray-400 font-medium">{label}</p>
-                    {isBoard && (
-                      <div className="flex items-center gap-1.5">
-                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
-                          (post.replyCount ?? 0) > 0
-                            ? "bg-orange-50 text-orange-500"
-                            : "bg-gray-100 text-gray-400"
-                        }`}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    <div className="flex items-center gap-2">
+                      {post.lat != null && post.lng != null && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); flyTo({ lat: post.lat!, lng: post.lng!, postId: post.id }); }}
+                          className="text-[11px] text-indigo-500 hover:text-indigo-700 transition flex items-center gap-0.5"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                           </svg>
-                          {post.replyCount ?? 0}件
-                        </span>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </div>
-                    )}
+                          地図で見る
+                        </button>
+                      )}
+                      {isBoard && (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                            (post.replyCount ?? 0) > 0
+                              ? "bg-orange-50 text-orange-500"
+                              : "bg-gray-100 text-gray-400"
+                          }`}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            </svg>
+                            {post.replyCount ?? 0}件
+                          </span>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

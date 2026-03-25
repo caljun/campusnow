@@ -32,7 +32,6 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile?.displayName ?? "");
-  const [department, setDepartment] = useState(profile?.department ?? "");
   const [bio, setBio] = useState(profile?.bio ?? "");
   const [saving, setSaving] = useState(false);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
@@ -40,7 +39,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setDisplayName(profile?.displayName ?? "");
-    setDepartment(profile?.department ?? "");
     setBio(profile?.bio ?? "");
   }, [profile]);
 
@@ -60,7 +58,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    await setDoc(doc(db, "users", user.uid), { uid: user.uid, email: user.email ?? "", displayName, department, bio }, { merge: true });
+    await setDoc(doc(db, "users", user.uid), { uid: user.uid, email: user.email ?? "", displayName, bio }, { merge: true });
     await refreshProfile();
     setSaving(false);
     setEditing(false);
@@ -127,15 +125,6 @@ export default function ProfilePage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">学部・所属</label>
-                <input
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="例: 工学部 3年"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
-                />
-              </div>
-              <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">自己紹介</label>
                 <textarea
                   value={bio}
@@ -173,9 +162,8 @@ export default function ProfilePage() {
               </button>
             </div>
             <p className="font-bold text-gray-900 text-lg leading-tight">{profile?.displayName}</p>
-            {profile?.department && <p className="text-sm text-gray-400 mt-0.5">{profile.department}</p>}
             {profile?.bio && <p className="text-sm text-gray-600 mt-3 leading-relaxed">{profile.bio}</p>}
-            {!profile?.bio && !profile?.department && (
+            {!profile?.bio && (
               <p className="text-sm text-gray-300 mt-1">プロフィールを編集して自己紹介を追加しよう</p>
             )}
           </div>
