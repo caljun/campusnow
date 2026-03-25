@@ -133,28 +133,20 @@ export default function HomePage() {
   };
 
   const handlePost = async () => {
-    if (!postText.trim()) return;
+    if (!postText.trim() || !myPos) return;
     setPosting(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const now = Date.now();
-        await addDoc(collection(db, "mapPosts"), {
-          uid: user!.uid,
-          displayName: profile?.displayName ?? "",
-          text: postText.trim(),
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          createdAt: now,
-          expiresAt: now + 5 * 60 * 1000,
-        });
-        setPostText("");
-        setPosting(false);
-      },
-      () => {
-        alert("位置情報の取得に失敗しました");
-        setPosting(false);
-      }
-    );
+    const now = Date.now();
+    await addDoc(collection(db, "mapPosts"), {
+      uid: user!.uid,
+      displayName: profile?.displayName ?? "",
+      text: postText.trim(),
+      lat: myPos.lat,
+      lng: myPos.lng,
+      createdAt: now,
+      expiresAt: now + 5 * 60 * 1000,
+    });
+    setPostText("");
+    setPosting(false);
   };
 
   const mapLegend = [
