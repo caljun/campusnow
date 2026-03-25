@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { MapProvider, useMapContext } from "../context/MapContext";
 import FloatingMap from "./FloatingMap";
 
 function LayoutContent({ children }: { children: ReactNode }) {
   const { setMapOpen } = useMapContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const onProfile = location.pathname === "/profile";
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -71,23 +74,36 @@ function LayoutContent({ children }: { children: ReactNode }) {
 
       {/* Mobile top bar */}
       <header className="md:hidden fixed top-0 left-0 right-0 h-12 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-30">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-indigo-600">CampusNow</span>
-          <span className="text-xs text-gray-400">QUINTBRIDGE</span>
-        </div>
-        <NavLink
-          to="/profile"
-          className={({ isActive }) =>
-            `w-8 h-8 rounded-full flex items-center justify-center transition ${
-              isActive ? "text-indigo-600" : "text-gray-400"
-            }`
-          }
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-        </NavLink>
+        {onProfile ? (
+          <>
+            <button
+              onClick={() => navigate(-1)}
+              className="w-8 h-8 flex items-center justify-center text-gray-500"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <span className="text-sm font-semibold text-gray-800">プロフィール</span>
+            <div className="w-8" />
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-indigo-600">CampusNow</span>
+              <span className="text-xs text-gray-400">QUINTBRIDGE</span>
+            </div>
+            <NavLink
+              to="/profile"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </NavLink>
+          </>
+        )}
       </header>
 
       {/* Main content */}
