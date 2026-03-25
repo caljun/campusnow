@@ -10,9 +10,9 @@ function LayoutContent({ children }: { children: ReactNode }) {
   const onProfile = location.pathname === "/profile";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-56 bg-white border-r border-gray-100 z-30">
+      <aside className="hidden">
         <div className="px-6 py-5 border-b border-gray-100">
           <span className="text-lg font-bold text-indigo-600 tracking-tight">CampusNow</span>
           <p className="text-[11px] text-gray-400 mt-0.5">QUINTBRIDGE</p>
@@ -73,7 +73,7 @@ function LayoutContent({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile top bar */}
-      <header className="md:hidden fixed top-0 left-0 right-0 h-12 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-30">
+      <header className="fixed top-0 left-0 right-0 h-12 bg-white border-b border-gray-100 flex items-center justify-between px-4 z-30">
         {onProfile ? (
           <>
             <button
@@ -107,7 +107,7 @@ function LayoutContent({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 md:ml-56 pt-12 md:pt-0 min-h-screen">
+      <main className="pt-12 min-h-screen">
         {children}
       </main>
 
