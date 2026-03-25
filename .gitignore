@@ -30,3 +30,6 @@ dist-ssr
 
 # Admin is a separate repo
 admin/
+
+# Demo app (local only)
+demo/
