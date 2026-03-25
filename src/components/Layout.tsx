@@ -91,44 +91,9 @@ function LayoutContent({ children }: { children: ReactNode }) {
       </header>
 
       {/* Main content */}
-      <main className="flex-1 md:ml-56 pt-12 pb-16 md:pt-0 md:pb-0 min-h-screen">
+      <main className="flex-1 md:ml-56 pt-12 md:pt-0 min-h-screen">
         {children}
       </main>
-
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex z-30">
-        <button
-          onClick={() => setMapOpen(true)}
-          className="flex-1 flex flex-col items-center justify-center py-2.5 gap-1 text-[10px] font-medium text-gray-400 transition-colors"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
-            <line x1="9" y1="3" x2="9" y2="18" />
-            <line x1="15" y1="6" x2="15" y2="21" />
-          </svg>
-          マップ
-        </button>
-        <NavLink
-          to="/list"
-          className={({ isActive }) =>
-            `flex-1 flex flex-col items-center justify-center py-2.5 gap-1 text-[10px] font-medium transition-colors ${
-              isActive ? "text-indigo-600" : "text-gray-400"
-            }`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              タイムライン
-            </>
-          )}
-        </NavLink>
-      </nav>
 
       <FloatingMap />
     </div>
