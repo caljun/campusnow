@@ -77,11 +77,9 @@ export default function ProfilePage() {
     if (!user) return;
     const q = query(collection(db, "mapPosts"), where("uid", "==", user.uid));
     const unsub = onSnapshot(q, (snap) => {
-      const now = Date.now();
       setMyPosts(
         snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as MapPost))
-          .filter((p) => p.expiresAt > now)
           .sort((a, b) => b.createdAt - a.createdAt)
       );
     });
@@ -248,7 +246,7 @@ export default function ProfilePage() {
                   </svg>
                 </div>
                 <p className="text-sm text-gray-400">現在アクティブな投稿はありません</p>
-                <p className="text-xs text-gray-300 mt-1">投稿は5分で自動削除されます</p>
+                <p className="text-xs text-gray-300 mt-1">QUINTBRIDGEで投稿してみよう</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-50">

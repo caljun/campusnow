@@ -16,6 +16,8 @@ export interface FriendRequest {
   createdAt: number;
 }
 
+export type PostCategory = "サークル" | "飲み会" | "就活";
+
 export interface MapPost {
   id: string;
   uid: string;
@@ -24,5 +26,6 @@ export interface MapPost {
   lat: number;
   lng: number;
   createdAt: number;
-  expiresAt: number; // createdAt + 5min
+  category: PostCategory;
+  anonymous: boolean;
 }

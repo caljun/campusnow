@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { doc, setDoc, collection, query, where, onSnapshot, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc } from "firebase/firestore";
 import { MapContainer, TileLayer, CircleMarker, Circle, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import Layout from "../components/Layout";
-import type { MapPost } from "../types";
+import type { MapPost, PostCategory } from "../types";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -17,6 +17,12 @@ L.Icon.Default.mergeOptions({
 
 const QUINTBRIDGE = { lat: 34.699167, lng: 135.530000 };
 const GEOFENCE_RADIUS_M = 150;
+
+const CATEGORY_COLORS: Record<PostCategory, string> = {
+  "サークル": "#6366f1",
+  "飲み会": "#f97316",
+  "就活": "#10b981",
+};
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
@@ -38,12 +44,9 @@ function timeAgo(ms: number): string {
 
 function MyLocationButton({ pos }: { pos: { lat: number; lng: number } | null }) {
   const map = useMap();
-  const handleClick = () => {
-    if (pos) map.setView([pos.lat, pos.lng], 17);
-  };
   return (
     <button
-      onClick={handleClick}
+      onClick={() => { if (pos) map.setView([pos.lat, pos.lng], 17); }}
       title="現在地に移動"
       className="absolute top-3 right-3 z-[1000] bg-white rounded-xl shadow-md w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-50 transition"
     >
@@ -56,19 +59,20 @@ function MyLocationButton({ pos }: { pos: { lat: number; lng: number } | null })
 }
 
 export default function HomePage() {
-  const { user, profile, refreshProfile } = useAuth();
-  const [checkedIn, setCheckedIn] = useState(profile?.checkedIn ?? false);
-  const [loading, setLoading] = useState(false);
-  const [postText, setPostText] = useState("");
-  const [posting, setPosting] = useState(false);
+  const { user, profile } = useAuth();
   const [posts, setPosts] = useState<MapPost[]>([]);
-  const [friendUids, setFriendUids] = useState<Set<string>>(new Set());
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
-  const [checkInError, setCheckInError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setCheckedIn(profile?.checkedIn ?? false);
-  }, [profile]);
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [postText, setPostText] = useState("");
+  const [category, setCategory] = useState<PostCategory>("サークル");
+  const [anonymous, setAnonymous] = useState(false);
+  const [posting, setPosting] = useState(false);
+
+  const inRange = myPos
+    ? haversineDistance(myPos.lat, myPos.lng, QUINTBRIDGE.lat, QUINTBRIDGE.lng) <= GEOFENCE_RADIUS_M
+    : false;
 
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
@@ -80,60 +84,14 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, "friendRequests"), where("status", "==", "accepted"));
-    const unsub = onSnapshot(q, (snap) => {
-      const uids = new Set<string>();
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        if (data.fromUid === user.uid) uids.add(data.toUid);
-        if (data.toUid === user.uid) uids.add(data.fromUid);
-      });
-      setFriendUids(uids);
-    });
-    return unsub;
-  }, [user]);
-
-  useEffect(() => {
     const unsub = onSnapshot(collection(db, "mapPosts"), (snap) => {
-      const now = Date.now();
-      setPosts(
-        snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as MapPost))
-          .filter((p) => p.expiresAt > now)
-      );
+      setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as MapPost)));
     });
     return unsub;
   }, []);
 
-  const handleCheckIn = async () => {
-    setCheckInError(null);
-    if (!myPos) {
-      setCheckInError("位置情報を取得中です。少し待ってから再試行してください。");
-      return;
-    }
-    const dist = haversineDistance(myPos.lat, myPos.lng, QUINTBRIDGE.lat, QUINTBRIDGE.lng);
-    if (dist > GEOFENCE_RADIUS_M) {
-      setCheckInError(`範囲外です — QUINTBRIDGEまで約${Math.round(dist)}m`);
-      return;
-    }
-    setLoading(true);
-    await setDoc(doc(db, "users", user!.uid), { checkedIn: true, checkedInAt: Date.now() }, { merge: true });
-    await refreshProfile();
-    setCheckedIn(true);
-    setLoading(false);
-  };
-
-  const handleCheckOut = async () => {
-    setLoading(true);
-    await setDoc(doc(db, "users", user!.uid), { checkedIn: false, checkedInAt: null }, { merge: true });
-    await refreshProfile();
-    setCheckedIn(false);
-    setLoading(false);
-  };
-
   const handlePost = async () => {
-    if (!postText.trim() || !myPos) return;
+    if (!postText.trim() || !myPos || !inRange) return;
     setPosting(true);
     const now = Date.now();
     await addDoc(collection(db, "mapPosts"), {
@@ -143,180 +101,178 @@ export default function HomePage() {
       lat: myPos.lat,
       lng: myPos.lng,
       createdAt: now,
-      expiresAt: now + 5 * 60 * 1000,
+      category,
+      anonymous,
     });
     setPostText("");
+    setCategory("サークル");
+    setAnonymous(false);
     setPosting(false);
+    setShowModal(false);
   };
 
-  const mapLegend = [
-    { color: "#3b82f6", label: "現在地" },
-    { color: "#6366f1", label: "自分の投稿" },
-    { color: "#10b981", label: "友達の投稿" },
-    { color: "#9ca3af", label: "匿名の投稿" },
-  ];
+  const categories: PostCategory[] = ["サークル", "飲み会", "就活"];
 
   return (
     <Layout>
-      {/* Mobile layout: full-height flex column */}
-      <div className="flex flex-col md:flex-row h-[calc(100svh-4rem)] md:h-screen">
-
-        {/* Map area */}
-        <div className="flex-1 relative">
-          <MapContainer
+      <div className="relative h-[calc(100svh-4rem)]">
+        {/* Map */}
+        <MapContainer
+          center={[QUINTBRIDGE.lat, QUINTBRIDGE.lng]}
+          zoom={17}
+          style={{ height: "100%", width: "100%" }}
+          zoomControl={false}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <Circle
             center={[QUINTBRIDGE.lat, QUINTBRIDGE.lng]}
-            zoom={17}
-            style={{ height: "100%", width: "100%" }}
-            zoomControl={false}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Circle
-              center={[QUINTBRIDGE.lat, QUINTBRIDGE.lng]}
-              radius={GEOFENCE_RADIUS_M}
-              pathOptions={{ color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.07, weight: 2, dashArray: "6 4" }}
-            />
-            {myPos && (
+            radius={GEOFENCE_RADIUS_M}
+            pathOptions={{ color: "#6366f1", fillColor: "#6366f1", fillOpacity: 0.07, weight: 2, dashArray: "6 4" }}
+          />
+          {myPos && (
+            <CircleMarker
+              center={[myPos.lat, myPos.lng]}
+              radius={10}
+              pathOptions={{ color: "#fff", fillColor: "#3b82f6", fillOpacity: 1, weight: 3 }}
+            >
+              <Popup><p className="text-sm font-semibold m-0">📍 現在地</p></Popup>
+            </CircleMarker>
+          )}
+          {posts.map((post) => {
+            const isMine = post.uid === user?.uid;
+            const label = post.anonymous ? "匿名" : post.displayName;
+            const color = isMine ? "#6366f1" : CATEGORY_COLORS[post.category] ?? "#9ca3af";
+            return (
               <CircleMarker
-                center={[myPos.lat, myPos.lng]}
-                radius={10}
-                pathOptions={{ color: "#fff", fillColor: "#3b82f6", fillOpacity: 1, weight: 3 }}
+                key={post.id}
+                center={[post.lat, post.lng]}
+                radius={8}
+                pathOptions={{ color: "#fff", fillColor: color, fillOpacity: 1, weight: 2 }}
               >
-                <Popup><p className="text-sm font-semibold m-0">📍 現在地</p></Popup>
-              </CircleMarker>
-            )}
-            {posts.map((post) => {
-              const isMine = post.uid === user?.uid;
-              const isFriend = friendUids.has(post.uid);
-              const label = isMine ? profile?.displayName ?? "自分" : isFriend ? post.displayName : "匿名";
-              const color = isMine ? "#6366f1" : isFriend ? "#10b981" : "#9ca3af";
-              return (
-                <CircleMarker
-                  key={post.id}
-                  center={[post.lat, post.lng]}
-                  radius={8}
-                  pathOptions={{ color: "#fff", fillColor: color, fillOpacity: 1, weight: 2 }}
-                >
-                  <Popup>
-                    <div style={{ minWidth: 140 }}>
-                      <p className="font-semibold text-sm m-0 mb-1">{label}</p>
-                      <p className="text-sm m-0 mb-1">{post.text}</p>
-                      <p className="text-xs text-gray-400 m-0">{timeAgo(post.createdAt)}</p>
+                <Popup>
+                  <div style={{ minWidth: 140 }}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[post.category] + "22", color: CATEGORY_COLORS[post.category] }}>
+                        {post.category}
+                      </span>
                     </div>
-                  </Popup>
-                </CircleMarker>
-              );
-            })}
-            <MyLocationButton pos={myPos} />
-          </MapContainer>
+                    <p className="font-semibold text-sm m-0 mb-1">{label}</p>
+                    <p className="text-sm m-0 mb-1">{post.text}</p>
+                    <p className="text-xs text-gray-400 m-0">{timeAgo(post.createdAt)}</p>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            );
+          })}
+          <MyLocationButton pos={myPos} />
+        </MapContainer>
 
-          {/* Legend */}
-          <div className="absolute bottom-3 left-3 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl shadow-sm px-3 py-2 flex gap-3">
-            {mapLegend.map((l) => (
-              <div key={l.label} className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: l.color }} />
-                <span className="text-[10px] text-gray-500">{l.label}</span>
-              </div>
-            ))}
+        {/* Legend */}
+        <div className="absolute bottom-24 left-3 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl shadow-sm px-3 py-2 flex gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0 bg-[#3b82f6]" />
+            <span className="text-[10px] text-gray-500">現在地</span>
           </div>
+          {categories.map((cat) => (
+            <div key={cat} className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
+              <span className="text-[10px] text-gray-500">{cat}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Control panel — bottom on mobile, right sidebar on desktop */}
-        <div className="md:w-80 md:border-l md:border-gray-100 bg-white flex flex-col">
-
-          {/* Desktop header */}
-          <div className="hidden md:block px-5 py-4 border-b border-gray-100">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">マップ操作</p>
-          </div>
-
-          <div className="p-4 space-y-3">
-            {/* Check-in status badge */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${checkedIn ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
-              <span className={`w-2 h-2 rounded-full ${checkedIn ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`} />
-              {checkedIn ? "チェックイン中 — QUINTBRIDGE" : "チェックアウト中"}
-            </div>
-
-            {checkedIn ? (
-              <>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={postText}
-                    onChange={(e) => setPostText(e.target.value)}
-                    maxLength={200}
-                    placeholder="マップに投稿する..."
-                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition"
-                  />
-                  <button
-                    onClick={handlePost}
-                    disabled={posting || !postText.trim()}
-                    className="bg-indigo-600 text-white px-4 rounded-xl text-sm font-medium disabled:opacity-40 hover:bg-indigo-700 transition"
-                  >
-                    投稿
-                  </button>
-                </div>
-                <p className="text-[11px] text-gray-400 px-1">投稿は5分後に自動削除されます</p>
-                <button
-                  onClick={handleCheckOut}
-                  disabled={loading}
-                  className="w-full border border-gray-200 text-gray-600 py-2.5 rounded-xl font-medium text-sm hover:bg-gray-50 transition disabled:opacity-50"
-                >
-                  チェックアウト
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleCheckIn}
-                  disabled={loading}
-                  className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold text-sm disabled:opacity-50 hover:bg-indigo-700 active:scale-[0.98] transition-all shadow-sm"
-                >
-                  {loading ? "チェックイン中..." : "📍 チェックイン"}
-                </button>
-                {checkInError ? (
-                  <div className="flex items-center gap-2 bg-red-50 text-red-500 text-xs px-3 py-2.5 rounded-xl">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    {checkInError}
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-gray-400 text-center px-2">
-                    QUINTBRIDGE（半径150m）内にいる場合のみチェックインできます
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Desktop: post list */}
-          {posts.length > 0 && (
-            <div className="hidden md:block flex-1 overflow-y-auto border-t border-gray-100">
-              <p className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider">最近の投稿</p>
-              <div className="space-y-px">
-                {[...posts].sort((a, b) => b.createdAt - a.createdAt).map((post) => {
-                  const isMine = post.uid === user?.uid;
-                  const isFriend = friendUids.has(post.uid);
-                  const label = isMine ? profile?.displayName ?? "自分" : isFriend ? post.displayName : "匿名";
-                  const color = isMine ? "#6366f1" : isFriend ? "#10b981" : "#9ca3af";
-                  return (
-                    <div key={post.id} className="px-5 py-3 hover:bg-gray-50 transition">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-xs font-medium text-gray-700">{label}</span>
-                        <span className="text-[10px] text-gray-400 ml-auto">{timeAgo(post.createdAt)}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 pl-4">{post.text}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        {/* Post button */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-1.5">
+          <button
+            onClick={() => inRange && setShowModal(true)}
+            disabled={!inRange}
+            className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-semibold text-sm shadow-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-[0.97] transition-all"
+          >
+            ✏️ 投稿する
+          </button>
+          {!inRange && (
+            <span className="text-[11px] text-white bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full">
+              {myPos ? "範囲外 — QUINTBRIDGEに近づいてください" : "位置情報を取得中..."}
+            </span>
           )}
         </div>
       </div>
+
+      {/* Post modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-gray-900">投稿する</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 transition">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Category */}
+            <div className="flex gap-2 mb-4">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  className="flex-1 py-2 rounded-xl text-xs font-semibold border transition"
+                  style={
+                    category === cat
+                      ? { backgroundColor: CATEGORY_COLORS[cat], color: "#fff", borderColor: CATEGORY_COLORS[cat] }
+                      : { backgroundColor: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }
+                  }
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            {/* Text */}
+            <textarea
+              value={postText}
+              onChange={(e) => setPostText(e.target.value)}
+              maxLength={200}
+              rows={3}
+              placeholder="内容を入力..."
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition resize-none mb-4"
+            />
+
+            {/* Anonymous toggle */}
+            <div className="flex gap-2 mb-5">
+              <button
+                onClick={() => setAnonymous(false)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition ${
+                  !anonymous ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200"
+                }`}
+              >
+                {profile?.displayName ?? "名前"}で投稿
+              </button>
+              <button
+                onClick={() => setAnonymous(true)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition ${
+                  anonymous ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200"
+                }`}
+              >
+                匿名で投稿
+              </button>
+            </div>
+
+            <button
+              onClick={handlePost}
+              disabled={posting || !postText.trim()}
+              className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold text-sm disabled:opacity-40 hover:bg-indigo-700 transition"
+            >
+              {posting ? "投稿中..." : "投稿する"}
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
