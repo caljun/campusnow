@@ -57,7 +57,6 @@ export default function ListPage() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Header */}
         <div className="flex items-end justify-between mb-5">
           <h1 className="text-xl font-bold text-gray-900">タイムライン</h1>
           <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-full">
@@ -66,7 +65,6 @@ export default function ListPage() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
           {TABS.map(({ key, label }) => (
             <button

@@ -83,7 +83,6 @@ export default function HomePage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  // Map shows only "post" type
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "posts"), (snap) => {
       setMapPosts(
@@ -180,24 +179,24 @@ export default function HomePage() {
           <MyLocationButton pos={myPos} />
         </MapContainer>
 
-        {/* Post button */}
+        {/* 投稿ボタン — 圏内のときだけ表示 */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-1.5">
-          <button
-            onClick={() => inRange && openModal()}
-            disabled={!inRange}
-            className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-semibold text-sm shadow-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-[0.97] transition-all"
-          >
-            ✏️ 投稿する
-          </button>
-          {!inRange && (
+          {inRange ? (
+            <button
+              onClick={openModal}
+              className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-semibold text-sm shadow-lg hover:bg-indigo-700 active:scale-[0.97] transition-all"
+            >
+              ✏️ 投稿する
+            </button>
+          ) : (
             <span className="text-[11px] text-white bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full">
-              {myPos ? "範囲外 — QUINTBRIDGEに近づいてください" : "位置情報を取得中..."}
+              {myPos ? "圏外 — QUINTBRIDGEに近づいてください" : "位置情報を取得中..."}
             </span>
           )}
         </div>
       </div>
 
-      {/* Post modal */}
+      {/* 投稿モーダル */}
       {showModal && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
@@ -211,7 +210,6 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Type selector */}
             <div className="flex gap-2 mb-4">
               {POST_TYPES.map(({ type, label }) => (
                 <button
@@ -231,7 +229,6 @@ export default function HomePage() {
               {POST_TYPES.find((t) => t.type === postType)?.desc}
             </p>
 
-            {/* Title (board / announcement) */}
             {(postType === "board" || postType === "announcement") && (
               <input
                 value={title}
@@ -242,7 +239,6 @@ export default function HomePage() {
               />
             )}
 
-            {/* Text */}
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -252,7 +248,6 @@ export default function HomePage() {
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition resize-none mb-4"
             />
 
-            {/* Anonymous toggle (post only) */}
             {postType === "post" && (
               <div className="flex gap-2 mb-5">
                 <button
