@@ -23,5 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment variables (never commit these)
+.env
+.env.local
+.env.*.local
+
 # Admin is a separate repo
 admin/
