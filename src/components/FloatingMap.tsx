@@ -65,7 +65,7 @@ function FlyToTarget({
 }: {
   target: { lat: number; lng: number; postId?: string } | null;
   onFlied: () => void;
-  markerRefs: React.MutableRefObject<Record<string, L.CircleMarker | null>>;
+  markerRefs: React.RefObject<Record<string, L.CircleMarker | null>>;
 }) {
   const map = useMap();
   const onFliedRef = useRef(onFlied);
@@ -195,13 +195,14 @@ export default function FloatingMap() {
           zoom={17}
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
+          attributionControl={false}
           dragging={false}
           scrollWheelZoom={false}
           doubleClickZoom={false}
           touchZoom={false}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            attribution=""
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <Circle
