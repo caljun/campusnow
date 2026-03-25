@@ -106,9 +106,9 @@ export default function ProfilePage() {
 
         {/* Edit modal */}
         {editing && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40" onClick={() => setEditing(false)} />
-            <div className="relative bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl px-5 pt-5 pb-8 md:pb-6 space-y-4">
+            <div className="relative bg-white w-full max-w-md mx-4 rounded-2xl px-5 pt-5 pb-6 space-y-4">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold text-gray-900 text-base">プロフィールを編集</h3>
                 <button onClick={() => setEditing(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition">

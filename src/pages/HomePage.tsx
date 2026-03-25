@@ -199,9 +199,9 @@ export default function HomePage() {
 
       {/* Post modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[2000] flex items-end sm:items-center justify-center">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-md p-6 shadow-2xl">
+          <div className="relative bg-white rounded-3xl w-full max-w-md mx-4 p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-base font-bold text-gray-900">投稿する</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 transition">
