@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { doc, setDoc, deleteDoc, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, deleteDoc, collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { db, auth } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -36,6 +36,7 @@ export default function ProfilePage() {
   const [bio, setBio] = useState(profile?.bio ?? "");
   const [saving, setSaving] = useState(false);
   const [myPosts, setMyPosts] = useState<Post[]>([]);
+  const [deleteConfirm, setDeleteConfirm] = useState<Post | null>(null);
 
   useEffect(() => {
     setDisplayName(profile?.displayName ?? "");
@@ -65,8 +66,14 @@ export default function ProfilePage() {
     setEditing(false);
   };
 
-  const handleDeletePost = async (postId: string) => {
-    await deleteDoc(doc(db, "posts", postId));
+  const handleDeletePost = async () => {
+    if (!deleteConfirm) return;
+    if (deleteConfirm.type === "board") {
+      const repliesSnap = await getDocs(collection(db, "posts", deleteConfirm.id, "replies"));
+      await Promise.all(repliesSnap.docs.map((r) => deleteDoc(r.ref)));
+    }
+    await deleteDoc(doc(db, "posts", deleteConfirm.id));
+    setDeleteConfirm(null);
   };
 
   const handleLogout = async () => { await signOut(auth); navigate("/"); };
@@ -74,6 +81,28 @@ export default function ProfilePage() {
   return (
     <Layout>
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+
+        {/* Delete confirm modal */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteConfirm(null)} />
+            <div className="relative bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl">
+              <p className="text-sm text-gray-800 mb-1 font-semibold">投稿を削除しますか？</p>
+              <p className="text-xs text-gray-400 mb-5 leading-relaxed line-clamp-2">
+                {deleteConfirm.title ?? deleteConfirm.text}
+                {deleteConfirm.type === "board" && "（返信もすべて削除されます）"}
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => setDeleteConfirm(null)} className="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-xl text-sm hover:bg-gray-50 transition">
+                  キャンセル
+                </button>
+                <button onClick={handleDeletePost} className="flex-1 bg-red-500 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-red-600 transition">
+                  削除する
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Edit modal */}
         {editing && (
@@ -178,7 +207,7 @@ export default function ProfilePage() {
                     <p className="text-xs text-gray-400 mt-1">{timeAgo(post.createdAt)}</p>
                   </div>
                   <button
-                    onClick={() => handleDeletePost(post.id)}
+                    onClick={() => setDeleteConfirm(post)}
                     className="flex-shrink-0 w-7 h-7 rounded-full hover:bg-red-50 flex items-center justify-center transition"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

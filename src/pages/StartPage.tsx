@@ -26,7 +26,6 @@ export default function StartPage() {
           email,
           department: "",
           bio: "",
-          checkedIn: false,
         });
       } else {
         const cred = await signInWithEmailAndPassword(auth, email, password);
