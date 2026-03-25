@@ -15,7 +15,7 @@ const navItems = [
   },
   {
     to: "/list",
-    label: "いる人",
+    label: "タイムライン",
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

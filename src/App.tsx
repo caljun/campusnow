@@ -4,6 +4,7 @@ import StartPage from "./pages/StartPage";
 import HomePage from "./pages/HomePage";
 import ListPage from "./pages/ListPage";
 import ProfilePage from "./pages/ProfilePage";
+import BoardDetailPage from "./pages/BoardDetailPage";
 import type { ReactNode } from "react";
 
 function PrivateRoute({ children }: { children: ReactNode }) {
@@ -27,6 +28,7 @@ function AppRoutes() {
       <Route path="/home" element={<PrivateRoute><HomePage /></PrivateRoute>} />
       <Route path="/list" element={<PrivateRoute><ListPage /></PrivateRoute>} />
       <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+      <Route path="/board/:id" element={<PrivateRoute><BoardDetailPage /></PrivateRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

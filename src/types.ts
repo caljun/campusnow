@@ -4,28 +4,30 @@ export interface UserProfile {
   email: string;
   department?: string;
   bio?: string;
-  checkedIn: boolean;
-  checkedInAt?: number; // timestamp ms
 }
 
-export interface FriendRequest {
+export type PostType = "post" | "board" | "announcement";
+
+export interface Post {
   id: string;
-  fromUid: string;
-  toUid: string;
-  status: "pending" | "accepted" | "rejected";
+  type: PostType;
+  uid: string;
+  displayName: string;
+  text: string;
   createdAt: number;
+  // post only
+  anonymous?: boolean;
+  lat?: number;
+  lng?: number;
+  // board / announcement
+  title?: string;
+  replyCount?: number;
 }
 
-export type PostCategory = "サークル" | "飲み会" | "就活";
-
-export interface MapPost {
+export interface Reply {
   id: string;
   uid: string;
   displayName: string;
   text: string;
-  lat: number;
-  lng: number;
   createdAt: number;
-  category: PostCategory;
-  anonymous: boolean;
 }

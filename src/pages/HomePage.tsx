@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import Layout from "../components/Layout";
-import type { MapPost, PostCategory } from "../types";
+import type { Post, PostType } from "../types";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -17,12 +17,6 @@ L.Icon.Default.mergeOptions({
 
 const QUINTBRIDGE = { lat: 34.699167, lng: 135.530000 };
 const GEOFENCE_RADIUS_M = 150;
-
-const CATEGORY_COLORS: Record<PostCategory, string> = {
-  "サークル": "#6366f1",
-  "飲み会": "#f97316",
-  "就活": "#10b981",
-};
 
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
@@ -58,15 +52,21 @@ function MyLocationButton({ pos }: { pos: { lat: number; lng: number } | null })
   );
 }
 
+const POST_TYPES: { type: PostType; label: string; desc: string }[] = [
+  { type: "post",         label: "投稿",   desc: "普通の投稿（匿名可）" },
+  { type: "board",        label: "掲示板", desc: "返信できるスレッド（実名）" },
+  { type: "announcement", label: "告知",   desc: "お知らせ（実名）" },
+];
+
 export default function HomePage() {
   const { user, profile } = useAuth();
-  const [posts, setPosts] = useState<MapPost[]>([]);
+  const [mapPosts, setMapPosts] = useState<Post[]>([]);
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Modal state
   const [showModal, setShowModal] = useState(false);
-  const [postText, setPostText] = useState("");
-  const [category, setCategory] = useState<PostCategory>("サークル");
+  const [postType, setPostType] = useState<PostType>("post");
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [posting, setPosting] = useState(false);
 
@@ -83,40 +83,56 @@ export default function HomePage() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
+  // Map shows only "post" type
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "mapPosts"), (snap) => {
-      setPosts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as MapPost)));
+    const unsub = onSnapshot(collection(db, "posts"), (snap) => {
+      setMapPosts(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Post))
+          .filter((p) => p.type === "post" && p.lat != null)
+      );
     });
     return unsub;
   }, []);
 
-  const handlePost = async () => {
-    if (!postText.trim() || !myPos || !inRange) return;
-    setPosting(true);
-    const now = Date.now();
-    await addDoc(collection(db, "mapPosts"), {
-      uid: user!.uid,
-      displayName: profile?.displayName ?? "",
-      text: postText.trim(),
-      lat: myPos.lat,
-      lng: myPos.lng,
-      createdAt: now,
-      category,
-      anonymous,
-    });
-    setPostText("");
-    setCategory("サークル");
+  const openModal = () => {
+    setPostType("post");
+    setTitle("");
+    setText("");
     setAnonymous(false);
-    setPosting(false);
-    setShowModal(false);
+    setShowModal(true);
   };
 
-  const categories: PostCategory[] = ["サークル", "飲み会", "就活"];
+  const handlePost = async () => {
+    if (!text.trim() || !myPos || !inRange) return;
+    if ((postType === "board" || postType === "announcement") && !title.trim()) return;
+    setPosting(true);
+
+    const data: Omit<Post, "id"> = {
+      type: postType,
+      uid: user!.uid,
+      displayName: profile?.displayName ?? "",
+      text: text.trim(),
+      createdAt: Date.now(),
+      ...(postType === "post" && {
+        anonymous,
+        lat: myPos.lat,
+        lng: myPos.lng,
+      }),
+      ...((postType === "board" || postType === "announcement") && {
+        title: title.trim(),
+        replyCount: 0,
+      }),
+    };
+
+    await addDoc(collection(db, "posts"), data);
+    setShowModal(false);
+    setPosting(false);
+  };
 
   return (
     <Layout>
       <div className="relative h-[calc(100svh-4rem)]">
-        {/* Map */}
         <MapContainer
           center={[QUINTBRIDGE.lat, QUINTBRIDGE.lng]}
           zoom={17}
@@ -141,24 +157,18 @@ export default function HomePage() {
               <Popup><p className="text-sm font-semibold m-0">📍 現在地</p></Popup>
             </CircleMarker>
           )}
-          {posts.map((post) => {
+          {mapPosts.map((post) => {
             const isMine = post.uid === user?.uid;
             const label = post.anonymous ? "匿名" : post.displayName;
-            const color = isMine ? "#6366f1" : CATEGORY_COLORS[post.category] ?? "#9ca3af";
             return (
               <CircleMarker
                 key={post.id}
-                center={[post.lat, post.lng]}
+                center={[post.lat!, post.lng!]}
                 radius={8}
-                pathOptions={{ color: "#fff", fillColor: color, fillOpacity: 1, weight: 2 }}
+                pathOptions={{ color: "#fff", fillColor: isMine ? "#6366f1" : "#9ca3af", fillOpacity: 1, weight: 2 }}
               >
                 <Popup>
                   <div style={{ minWidth: 140 }}>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[post.category] + "22", color: CATEGORY_COLORS[post.category] }}>
-                        {post.category}
-                      </span>
-                    </div>
                     <p className="font-semibold text-sm m-0 mb-1">{label}</p>
                     <p className="text-sm m-0 mb-1">{post.text}</p>
                     <p className="text-xs text-gray-400 m-0">{timeAgo(post.createdAt)}</p>
@@ -170,24 +180,10 @@ export default function HomePage() {
           <MyLocationButton pos={myPos} />
         </MapContainer>
 
-        {/* Legend */}
-        <div className="absolute bottom-24 left-3 z-[1000] bg-white/90 backdrop-blur-sm rounded-xl shadow-sm px-3 py-2 flex gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0 bg-[#3b82f6]" />
-            <span className="text-[10px] text-gray-500">現在地</span>
-          </div>
-          {categories.map((cat) => (
-            <div key={cat} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
-              <span className="text-[10px] text-gray-500">{cat}</span>
-            </div>
-          ))}
-        </div>
-
         {/* Post button */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-1.5">
           <button
-            onClick={() => inRange && setShowModal(true)}
+            onClick={() => inRange && openModal()}
             disabled={!inRange}
             className="bg-indigo-600 text-white px-8 py-3.5 rounded-2xl font-semibold text-sm shadow-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-[0.97] transition-all"
           >
@@ -215,57 +211,72 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Category */}
+            {/* Type selector */}
             <div className="flex gap-2 mb-4">
-              {categories.map((cat) => (
+              {POST_TYPES.map(({ type, label }) => (
                 <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className="flex-1 py-2 rounded-xl text-xs font-semibold border transition"
-                  style={
-                    category === cat
-                      ? { backgroundColor: CATEGORY_COLORS[cat], color: "#fff", borderColor: CATEGORY_COLORS[cat] }
-                      : { backgroundColor: "#f9fafb", color: "#6b7280", borderColor: "#e5e7eb" }
-                  }
+                  key={type}
+                  onClick={() => { setPostType(type); setAnonymous(false); }}
+                  className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition ${
+                    postType === type
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-gray-50 text-gray-500 border-gray-200"
+                  }`}
                 >
-                  {cat}
+                  {label}
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-gray-400 mb-4 -mt-2">
+              {POST_TYPES.find((t) => t.type === postType)?.desc}
+            </p>
+
+            {/* Title (board / announcement) */}
+            {(postType === "board" || postType === "announcement") && (
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={100}
+                placeholder="タイトル"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition mb-3"
+              />
+            )}
 
             {/* Text */}
             <textarea
-              value={postText}
-              onChange={(e) => setPostText(e.target.value)}
-              maxLength={200}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              maxLength={500}
               rows={3}
               placeholder="内容を入力..."
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50 transition resize-none mb-4"
             />
 
-            {/* Anonymous toggle */}
-            <div className="flex gap-2 mb-5">
-              <button
-                onClick={() => setAnonymous(false)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition ${
-                  !anonymous ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200"
-                }`}
-              >
-                {profile?.displayName ?? "名前"}で投稿
-              </button>
-              <button
-                onClick={() => setAnonymous(true)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition ${
-                  anonymous ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200"
-                }`}
-              >
-                匿名で投稿
-              </button>
-            </div>
+            {/* Anonymous toggle (post only) */}
+            {postType === "post" && (
+              <div className="flex gap-2 mb-5">
+                <button
+                  onClick={() => setAnonymous(false)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition ${
+                    !anonymous ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  {profile?.displayName ?? "名前"}で投稿
+                </button>
+                <button
+                  onClick={() => setAnonymous(true)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition ${
+                    anonymous ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  匿名で投稿
+                </button>
+              </div>
+            )}
 
             <button
               onClick={handlePost}
-              disabled={posting || !postText.trim()}
+              disabled={posting || !text.trim() || ((postType === "board" || postType === "announcement") && !title.trim())}
               className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-semibold text-sm disabled:opacity-40 hover:bg-indigo-700 transition"
             >
               {posting ? "投稿中..." : "投稿する"}
