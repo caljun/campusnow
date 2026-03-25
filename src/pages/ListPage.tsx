@@ -131,12 +131,18 @@ export default function ListPage() {
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-gray-400 font-medium">{label}</p>
                     {isBoard && (
-                      <div className="flex items-center gap-1 text-xs text-gray-400">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                        </svg>
-                        {post.replyCount ?? 0}件の返信
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                          (post.replyCount ?? 0) > 0
+                            ? "bg-orange-50 text-orange-500"
+                            : "bg-gray-100 text-gray-400"
+                        }`}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                          {post.replyCount ?? 0}件
+                        </span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="9 18 15 12 9 6" />
                         </svg>
                       </div>

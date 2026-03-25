@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, getDoc, collection, onSnapshot, addDoc, updateDoc, increment } from "firebase/firestore";
+import { doc, getDoc, collection, onSnapshot, addDoc, updateDoc, increment, setDoc } from "firebase/firestore";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -36,11 +36,12 @@ export default function BoardDetailPage() {
     const unsub = onSnapshot(
       collection(db, "posts", id, "replies"),
       (snap) => {
-        setReplies(
-          snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as Reply))
-            .sort((a, b) => a.createdAt - b.createdAt)
-        );
+        const sorted = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as Reply))
+          .sort((a, b) => a.createdAt - b.createdAt);
+        setReplies(sorted);
+        // replyCountを実数に同期
+        setDoc(doc(db, "posts", id), { replyCount: snap.size }, { merge: true });
       }
     );
     return unsub;
