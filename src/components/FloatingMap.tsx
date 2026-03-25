@@ -186,7 +186,7 @@ export default function FloatingMap() {
       <div
         className={mapOpen
           ? "fixed inset-0 z-50"
-          : "fixed bottom-5 right-4 w-36 h-24 rounded-xl overflow-hidden shadow-lg z-40 cursor-pointer"
+          : "fixed bottom-5 right-4 w-36 h-24 md:w-64 md:h-44 rounded-xl overflow-hidden shadow-lg z-40 cursor-pointer"
         }
         onClick={!mapOpen ? () => setMapOpen(true) : undefined}
       >
